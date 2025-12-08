@@ -19,7 +19,7 @@ describe('App Component', () => {
 
   test('renders Counter component', () => {
     render(<App />)
-    const counterElement = screen.getByText(/count is/i)
+    const counterElement = screen.getByText(/Counter component is working!/i)
     expect(counterElement).toBeInTheDocument()
   })
 })
