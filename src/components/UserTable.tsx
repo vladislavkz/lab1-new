@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 type User = {
   id: number
@@ -8,10 +8,16 @@ type User = {
   website: string
 }
 
+type SortDirection = 'asc' | 'desc' | null
+
 export default function UserTable() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof User
+    direction: SortDirection
+  }>({ key: 'name', direction: null })
 
   const fetchUsers = async () => {
     setLoading(true)
@@ -23,11 +29,52 @@ export default function UserTable() {
       }
       const data: User[] = await response.json()
       setUsers(data)
+      setSortConfig({ key: 'name', direction: null }) // Сброс сортировки при новой загрузке
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Неизвестная ошибка')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSort = (key: keyof User) => {
+    let direction: SortDirection = 'asc'
+    
+    if (sortConfig.key === key) {
+      if (sortConfig.direction === 'asc') {
+        direction = 'desc'
+      } else if (sortConfig.direction === 'desc') {
+        direction = null
+      } else {
+        direction = 'asc'
+      }
+    }
+    
+    setSortConfig({ key, direction })
+  }
+
+  const sortedUsers = useMemo(() => {
+    if (!sortConfig.direction) return users
+    
+    return [...users].sort((a, b) => {
+      const aValue = a[sortConfig.key]
+      const bValue = b[sortConfig.key]
+      
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1
+      }
+      return 0
+    })
+  }, [users, sortConfig])
+
+  const getSortIcon = (key: keyof User) => {
+    if (sortConfig.key !== key) return '↕️'
+    if (sortConfig.direction === 'asc') return '↑'
+    if (sortConfig.direction === 'desc') return '↓'
+    return '↕️'
   }
 
   return (
@@ -45,14 +92,19 @@ export default function UserTable() {
         >
           <thead>
             <tr>
-              <th>Имя</th>
+              <th 
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => handleSort('name')}
+              >
+                Имя {getSortIcon('name')}
+              </th>
               <th>Email</th>
               <th>Телефон</th>
               <th>Сайт</th>
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
+            {sortedUsers.map((user) => (
               <tr key={user.id}>
                 <td>{user.name}</td>
                 <td>{user.email}</td>
